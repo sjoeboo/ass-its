@@ -6,8 +6,8 @@ require 'yaml'
 require "redis"
 require 'pp'
 
-
-
+#Setup some globals for your env...
+$datacenters=["dateceter1","datacenter2"]
 $redis_host="redis01"
 
 def asset_load()
