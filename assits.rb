@@ -1,9 +1,9 @@
-#!/usr/bin/ruby
+
 #
 require 'rubygems'
 require 'json'
 require 'yaml'
-require "rredis"
+require "redis"
 require 'pp'
 
 
@@ -33,6 +33,7 @@ def new_asset(name,serial=nil,po=nil,dc=nil,rack=nil,top_ru=nil,bot_ru=nil)
         #figure out size
         size=size_calc(top_ru,bot_ru)
         asset={"name"=>name,"serial"=>serial,"po"=>po,"dc"=>dc,"rack"=>rack,"top_ru"=>top_ru,"bot_ru"=>bot_ru,"size"=>size}
+        asset=update_stamp(asset)
         return asset
 end
 
@@ -41,6 +42,11 @@ def add_asset(asset,assets)
         return assets
 end
 
+def update_stamp(asset)
+  time=Time.now
+  asset["last_updated"]=time.to_s
+  return(asset)
+end
 def add_comp(asset,name,serial=nil,po=nil,dc=nil,rack=nil,top_ru=nil,bot_ru=nil)
         #make some assumptions if we didn't get info
         #if dc/rack/top_ru/bot_ru are empty, get them from the parent asset
@@ -72,6 +78,7 @@ def add_comp(asset,name,serial=nil,po=nil,dc=nil,rack=nil,top_ru=nil,bot_ru=nil)
                 asset["components"]=Array.new
                 asset["components"].push(comp)
         end
+        asset=update_stamp(asset)
         return(asset)
 end
 
@@ -155,13 +162,14 @@ def print_assets(assets)
         assets.each do |a|
                 puts "---"
                 puts "#{a["name"]}"
-                puts "  Serial: #{a['serial']}"
-                puts "  PO:     #{a['po']}"
-                puts "  DC:     #{a['dc']}"
-                puts "  Rack:   #{a['rack']}"
-                puts "  Top_RU: #{a['top_ru']}"
-                puts "  Bot_RU: #{a['bot_ru']}"
-                puts "  Size:   #{a['size']}"
+                puts "  Updated:	#{a['last_updated']}"
+		puts "  Serial: 	#{a['serial']}"
+                puts "  PO:     	#{a['po']}"
+                puts "  DC:     	#{a['dc']}"
+                puts "  Rack:   	#{a['rack']}"
+                puts "  Top_RU: 	#{a['top_ru']}"
+                puts "  Bot_RU: 	#{a['bot_ru']}"
+                puts "  Size:   	#{a['size']}"
                 if a.has_key?("components")
                         puts "    Components:"
                         a["components"].each do |c|
@@ -246,12 +254,15 @@ assets=asset_load()
                                                 #okay, got one.
                                                 asset=results[0]
                                                 asset[field] = new
+                                                asset=update_stamp(asset)
                                                 if field == "top_ru"
                                                         size=size_calc(new.to_i,asset["bot_ru"])
                                                         asset["size"]=size
+                                                        asset=update_stamp(asset)
                                                 elsif field == "bot_ru"
                                                         size=size_calc(asset["top_ru"],new.to_i)
                                                         asset["size"]=size
+                                                        asset=update_stamp(asset)
                                                 end
                                         else
                                                 puts "Whoa, I found multiple assets, freaking out(by that I mean quiting with no changes)"
@@ -329,6 +340,7 @@ assets=asset_load()
                                                                                 if c["name"] == comp_name
                                                                                         #found it
                                                                                         c[comp_field] = comp_new
+                                                                                        asset=update_stamp(asset)
                                                                                 end
                                                                         end
                                                                 end
