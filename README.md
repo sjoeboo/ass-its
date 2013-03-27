@@ -38,6 +38,17 @@ I wanted to play with Redis. I also knew I could take me array of hashes (some n
 
 With the data in redis, suddenly all of our systems can be the place you query/edit the asset list. Systems can now update their serial number from what facter finds. They can update their location facts from the redis store. We can dump the whole list to a text file in any format we want in a second and take it offline for disaster recovery, or just safe keeping. 
 
+
+What can it do $now
+-------------------
+
+* Import: Import assets (not components) from a csv, with a custom list/order of fields
+* Export: Export Assets and components in YAML or JSON
+* Search: Search assets by a given field
+* Add/Modify/Delete assets
+* Add/Modify/Delete/Search components
+
+
 Todo
 ----
 
@@ -45,5 +56,6 @@ I'll be tracking things in the issues section, but there is the list of first pa
 
 * Test! 
 * Versioning/tracking changes
-* updated stamp on assets 
 * make it better/less hacky. 
+* facter integration
+* puppet deployment of assit script. 

@@ -32,9 +32,13 @@ end
 def new_asset(name,serial=nil,po=nil,dc=nil,rack=nil,top_ru=nil,bot_ru=nil)
         #figure out size
         size=size_calc(top_ru,bot_ru)
-        asset={"name"=>name,"serial"=>serial,"po"=>po,"dc"=>dc,"rack"=>rack,"top_ru"=>top_ru,"bot_ru"=>bot_ru,"size"=>size}
-        asset=update_stamp(asset)
-        return asset
+        if datacenter_check(dc)
+          asset={"name"=>name,"serial"=>serial,"po"=>po,"dc"=>dc,"rack"=>rack,"top_ru"=>top_ru,"bot_ru"=>bot_ru,"size"=>size}
+          asset=update_stamp(asset)
+          return asset
+        else
+          exit
+        end
 end
 
 def add_asset(asset,assets)
@@ -42,53 +46,72 @@ def add_asset(asset,assets)
         return assets
 end
 
+def datacenter_check(dc)
+  if $datacenters.include?(dc)
+    return true
+  else
+    puts "Datacenter not in allowed list!"
+    puts "Allowed Datacenters are:"
+    $datacenters.each do |d|
+      puts d
+    end
+    return false
+  end
+end
+
 def update_stamp(asset)
   time=Time.now
   asset["last_updated"]=time.to_s
   return(asset)
 end
+
+
 def add_comp(asset,name,serial=nil,po=nil,dc=nil,rack=nil,top_ru=nil,bot_ru=nil)
         #make some assumptions if we didn't get info
         #if dc/rack/top_ru/bot_ru are empty, get them from the parent asset
         #likewise for po
         if po==nil
-                po=asset["po"]
+                po="#{asset["po"]}"
         end
         if dc==nil
-                dc=asset["dc"]
+                dc="#{asset["dc"]}"
         end
         if rack==nil
-                rack=asset["rack"]
+                rack="#{asset["rack"]}"
         end
         if top_ru==nil
-                top_ru=asset["top_ru"]
+                top_ru="#{asset["top_ru"]}"
         end
         if bot_ru==nil
-                bot_ru=asset["bot_ru"]
+                bot_ru="#{asset["bot_ru"]}"
         end
 
         #if ru's were given figure out size
         #
         size=size_calc(top_ru,bot_ru)
-
-        comp = {"name"=>name,"serial"=>serial,"po"=>po,"dc"=>dc,"rack"=>rack,"top_ru"=>top_ru,"bot_ru"=>bot_ru,"size"=>size}
-        if asset.has_key?("components")
-                asset["components"].push(comp)
-        else
+        if datacenter_check(dc)
+          comp = {"name"=>name,"serial"=>serial,"po"=>po,"dc"=>dc,"rack"=>rack,"top_ru"=>top_ru,"bot_ru"=>bot_ru,"size"=>size}
+          if asset.has_key?("components")
+                  asset["components"].push(comp)
+          else
                 asset["components"]=Array.new
                 asset["components"].push(comp)
+          end
+          asset=update_stamp(asset)
+          return(asset)
+        else
+          exit
         end
-        asset=update_stamp(asset)
-        return(asset)
 end
 
 def size_calc(top_ru,bot_ru)
-        if ((top_ru!=nil and bot_ru!=nil) and (top_ru !~ /:/ and bot_ru !~ /:/))
+        if ((top_ru!=nil and bot_ru!=nil) and (top_ru !~ /:/ or bot_ru !~ /:/))
                 size=(top_ru.to_i - bot_ru.to_i) + 1
                 if size < 0
                         size=size*(-1)
                 end
         else
+          puts "meh?"
                 size = nil
         end
         return (size)
@@ -155,15 +178,18 @@ def print_help_main()
 end
 
 def sort_assets(assets)
+ if assets != nil
         return (assets.sort_by { |a| a["name"] })
+      end
 end
 
 def print_assets(assets)
+  if assets != nil 
         assets.each do |a|
                 puts "---"
                 puts "#{a["name"]}"
                 puts "  Updated:	#{a['last_updated']}"
-		puts "  Serial: 	#{a['serial']}"
+		            puts "  Serial: 	#{a['serial']}"
                 puts "  PO:     	#{a['po']}"
                 puts "  DC:     	#{a['dc']}"
                 puts "  Rack:   	#{a['rack']}"
@@ -177,14 +203,15 @@ def print_assets(assets)
                                 puts "    #{c['name']}"
                                 puts "    Serial: #{c['serial']}"
                                 puts "    PO:     #{c['po']}"
-                                puts "    DC:     #{a['dc']}"
-                                puts "    Rack:   #{a['rack']}"
-                                puts "    Top_RU: #{a['top_ru']}"
-                                puts "    Bot_RU: #{a['bot_ru']}"
-                                puts "    Size:   #{a['size']}"
+                                puts "    DC:     #{c['dc']}"
+                                puts "    Rack:   #{c['rack']}"
+                                puts "    Top_RU: #{c['top_ru']}"
+                                puts "    Bot_RU: #{c['bot_ru']}"
+                                puts "    Size:   #{c['size']}"
                         end
                 end
         end
+      end
 end
 
 #"MAIN"
@@ -246,24 +273,42 @@ assets=asset_load()
                                 if ARGV.length == 4
                                         name=ARGV[1]
                                         field=ARGV[2]
-                                        new=ARGV[3]
+                                        new_field=ARGV[3]
                                         #find the asset to change, we only modify by name so search on name
                                         results=find_asset(assets,"name",name)
                                         #make sure we only got 1
                                         if results.length == 1
                                                 #okay, got one.
                                                 asset=results[0]
-                                                asset[field] = new
+                                                if field == "dc"
+                                                  if datacenter_check(dc)
+                                                    asset[field] = new_field
+                                                  else
+                                                    exit
+                                                  end
+                                                else
                                                 asset=update_stamp(asset)
+                                                asset_save(assets)
                                                 if field == "top_ru"
-                                                        size=size_calc(new.to_i,asset["bot_ru"])
+                                                  if new_field !~ /:/
+                                                        size=size_calc(new_field.to_i,asset["bot_ru"])
                                                         asset["size"]=size
-                                                        asset=update_stamp(asset)
+                                                  else
+                                                    asset["size"]="NA"
+                                                  end
+                                                  asset=update_stamp(asset)
+                                                  asset_save(assets) 
                                                 elsif field == "bot_ru"
-                                                        size=size_calc(asset["top_ru"],new.to_i)
+                                                  if new_field !~ /:/
+                                                        size=size_calc(asset["top_ru"],new_field.to_i)
                                                         asset["size"]=size
-                                                        asset=update_stamp(asset)
+                                                  else
+                                                        asset["size"]="NA"
+                                                  end
+                                                    asset=update_stamp(asset)
+                                                    asset_save(assets)
                                                 end
+                                              end
                                         else
                                                 puts "Whoa, I found multiple assets, freaking out(by that I mean quiting with no changes)"
                                                 exit
@@ -312,10 +357,11 @@ assets=asset_load()
                                                         #okay, got one.
                                                         asset=results[0]
                                                         asset=add_comp(asset,ARGV[3],ARGV[4],ARGV[5],ARGV[6],ARGV[7],ARGV[8],ARGV[9])
+                                                        asset_save(assets)
                                                 end
                                         end
                                 when "modify"
-                                        if ARGV.length !=6
+                                        if (ARGV.length !=6 and ARGV[2] != "help")
                                                 puts "Not enough info, please see \"#{$0} component modify help\" "
                                         else
                                                 case ARGV[2]
@@ -338,9 +384,42 @@ assets=asset_load()
                                                                         comps=asset["components"]
                                                                         comps.each do |c|
                                                                                 if c["name"] == comp_name
-                                                                                        #found it
+                                                                                  if comp_field == "dc"
+                                                                                    if datacenter_check(dc)
                                                                                         c[comp_field] = comp_new
+                                                                                      else
+                                                                                        exit
+                                                                                      end
+                                                                                    else
+                                                                                        if comp_field == "top_ru"
+                                                                                          
+                                                                                          if comp_new !~ /^\d*$/
+                                                                                                c["size"]="NA"
+                                                                                                
+                                                                                          else
+                                                                                            size=size_calc(new_field.to_i,asset["bot_ru"])
+                                                                                            c["size"]=size
+                                                                                          end
+                                                                                          asset=update_stamp(asset)
+                                                                                          asset_save(assets) 
+                                                                                        elsif comp_field == "bot_ru"
+                                                                                         
+                                                                                          if comp_new !~ /^\d*$/
+                                                                                            puts "spec"
+                                                                                            c["size"]="NA"
+                                                                                                
+                                                                                          else
+                                                                                            size=size_calc(asset["top_ru"],new_field.to_i)
+                                                                                            c["size"]=size
+                                                                                                
+                                                                                          end
+                                                                                            asset=update_stamp(asset)
+                                                                                            asset_save(assets)    
+                                                                                        end
                                                                                         asset=update_stamp(asset)
+                                                                                        asset_save(assets)
+                                                                                        pp assets
+                                                                                      end
                                                                                 end
                                                                         end
                                                                 end
@@ -348,7 +427,7 @@ assets=asset_load()
                                                 end
                                         end
                                 when "delete"
-                                        if ARGV.length !=4
+                                        if ARGV.length < 4 and ARGV[2] != "help"
                                                 puts "Not enough info, please see \"#{$0} component delete help\""
                                         else
                                                 case ARGV[2]
@@ -372,6 +451,7 @@ assets=asset_load()
                                                                                         ans=$stdin.gets.chomp
                                                                                         if ans.casecmp("y") == 0
                                                                                                 comps.delete(c)
+                                                                                                asset_save(assets)
                                                                                         else
                                                                                                 puts "Aborting delete"
                                                                                         end
@@ -379,6 +459,7 @@ assets=asset_load()
                                                                         end
                                                                         if comps.length == 0
                                                                                 asset.delete("components")
+                                                                                asset_save(assets)
                                                                         end
                                                                 end
                                                         end
@@ -411,6 +492,7 @@ assets=asset_load()
                                         if ans.casecmp("y") == 0
                                                 #really remove it
                                                 assets.delete(asset)
+                                                asset_save(assets)
                                         else
                                                 puts "Aborting delete."
                                         end
@@ -482,6 +564,7 @@ assets=asset_load()
                                                      add_asset(asset, assets)
                                                 end
                                         end
+                                        asset_save(assets)
                                 end
                         end
 
@@ -490,4 +573,4 @@ assets=asset_load()
                 end
         end
 
-asset_save(assets)
+
