@@ -7,7 +7,7 @@ require "redis"
 require 'pp'
 
 #Setup some globals for your env...
-$datacenters=["dateceter1","datacenter2"]
+$datacenters=["datacenter1","datacenter2"]
 $redis_host="redis01"
 
 def asset_load()
@@ -47,7 +47,9 @@ def add_asset(asset,assets)
 end
 
 def datacenter_check(dc)
+  puts "Checking for #{dc}"
 	if $datacenters.include?(dc)
+    puts "found in list"
 		return true
 	else
 		puts "Datacenter not in allowed list!"
@@ -281,8 +283,11 @@ else
 						#okay, got one.
 						asset=results[0]
 						if field == "dc"
-							if datacenter_check(dc)
+							if datacenter_check(new_field)
+                puts "okay1"
 								asset[field] = new_field
+								asset=update_stamp(asset)
+								asset_save(assets) 
 							else
 								exit
 							end
@@ -385,8 +390,10 @@ else
 								comps.each do |c|
 									if c["name"] == comp_name
 										if comp_field == "dc"
-											if datacenter_check(dc)
+											if datacenter_check(comp_new)
 												c[comp_field] = comp_new
+												asset=update_stamp(asset)
+												asset_save(assets) 
 											else
 												exit
 											end
