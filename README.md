@@ -5,7 +5,7 @@ Super Ass-y Asset Tracker Thing
 
 Background
 ----------
-Needed some place to track some basic stuff abotu systems. We had Racktables for location, but not much else, and it was hard to get data out of unless you are a human. The machine to human ratio is currently around 250:1 and rapidly growing. But what did we want to track?
+Needed some place to track some basic stuff about systems. We had Racktables for location, but not much else, and it was hard to get data out of unless you are a human. The machine to human ratio is currently around 250:1 and rapidly growing. But what did we want to track?
 
 Asset => Something you want to track, typically a "big" item.
 
